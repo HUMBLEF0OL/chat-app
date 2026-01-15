@@ -1,16 +1,29 @@
 import { getOpenRouterClient } from '../config/openrouter';
+import { config } from '../config/env';
 import { logger } from '../utils/logger';
 import OpenAI from 'openai';
 
 const SYSTEM_PROMPT = 'You are a helpful customer support assistant.';
-// Using a free model from OpenRouter
-const MODEL = 'google/gemini-2.0-flash-exp:free';
 
 export class AIService {
     private client: OpenAI;
+    private model: string;
 
     constructor() {
-        this.client = getOpenRouterClient();
+        if (config.llmProvider === 'openai') {
+            if (!config.openaiApiKey) {
+                throw new Error('OPENAI_API_KEY is required when using OpenAI provider');
+            }
+            this.client = new OpenAI({
+                apiKey: config.openaiApiKey,
+            });
+            this.model = config.openaiModel || 'gpt-4o-mini';
+            logger.info(`Initialized AIService with OpenAI (Model: ${this.model})`);
+        } else {
+            this.client = getOpenRouterClient();
+            this.model = 'google/gemini-2.0-flash-exp:free';
+            logger.info(`Initialized AIService with OpenRouter (Model: ${this.model})`);
+        }
     }
 
     /**
@@ -46,7 +59,7 @@ export class AIService {
 
             // Call OpenRouter API
             const completion = await this.client.chat.completions.create({
-                model: MODEL,
+                model: this.model,
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 1000,
@@ -79,13 +92,13 @@ export class AIService {
     async generateSimpleResponse(userMessage: string): Promise<string> {
         try {
             const completion = await this.client.chat.completions.create({
-                model: MODEL,
+
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0.7,
-                max_tokens: 1000,
+                model: this.model,
             });
 
             const responseText = completion.choices[0]?.message?.content;

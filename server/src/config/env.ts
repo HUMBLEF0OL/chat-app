@@ -11,6 +11,9 @@ interface EnvConfig {
     supabaseUrl: string;
     supabaseServiceRoleKey: string;
     openRouterApiKey: string;
+    llmProvider: 'openai' | 'openrouter';
+    openaiApiKey?: string;
+    openaiModel?: string;
 }
 
 function validateEnv(): EnvConfig {
@@ -18,7 +21,7 @@ function validateEnv(): EnvConfig {
         'JWT_SECRET',
         'SUPABASE_URL',
         'SUPABASE_SERVICE_ROLE_KEY',
-        'OPENROUTER_API_KEY',
+        // 'OPENROUTER_API_KEY', // Made optional if using OpenAI
     ];
 
     const missing = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -37,7 +40,10 @@ function validateEnv(): EnvConfig {
         jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
         supabaseUrl: process.env.SUPABASE_URL!,
         supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        openRouterApiKey: process.env.OPENROUTER_API_KEY!,
+        openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
+        llmProvider: (process.env.LLM_PROVIDER as 'openai' | 'openrouter') || 'openrouter',
+        openaiApiKey: process.env.OPENAI_API_KEY,
+        openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     };
 }
 
