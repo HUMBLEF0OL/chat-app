@@ -33,6 +33,15 @@ export class ChatController {
         } catch (error: any) {
             logger.error('Send message controller error', error);
 
+            if (error.status === 429) {
+                res.status(429).json({
+                    error: 'Too Many Requests',
+                    message: error.message,
+                    retryAfter: error.retryAfter
+                });
+                return;
+            }
+
             res.status(500).json({
                 error: 'Internal Server Error',
                 message: 'Failed to process message',

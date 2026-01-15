@@ -59,8 +59,16 @@ export class AIService {
             }
 
             return responseText;
-        } catch (error) {
+        } catch (error: any) {
             logger.error('AI generation error', error);
+            if (error.status === 429 || error.code === 429) {
+                const retryAfter = error.headers?.['retry-after'];
+                throw {
+                    status: 429,
+                    message: 'AI service is temporarily busy. Please try again later.',
+                    retryAfter
+                };
+            }
             throw new Error('Failed to generate AI response');
         }
     }

@@ -4,12 +4,12 @@ A secure, production-ready Express backend for a chat application with JWT authe
 
 ## Features
 
-- 🔐 **Secure Authentication**: JWT-based auth with bcrypt password hashing
-- 💬 **AI-Powered Chat**: Integration with Google Gemini 2.0 Flash for intelligent responses
-- 📊 **Data Persistence**: PostgreSQL database via Supabase
-- 🛡️ **Security**: Rate limiting, input validation, CORS protection
-- 🐳 **Docker Ready**: Multi-stage Dockerfile for optimized deployment
-- 📝 **TypeScript**: Full type safety and modern JavaScript features
+- **Secure Authentication**: JWT-based auth with bcrypt password hashing
+- **AI-Powered Chat**: Integration with Google Gemini 2.0 Flash for intelligent responses
+- **Data Persistence**: PostgreSQL database via Supabase
+- **Security**: Rate limiting, input validation, CORS protection
+- **Docker Ready**: Multi-stage Dockerfile for optimized deployment
+- **TypeScript**: Full type safety and modern JavaScript features
 
 ## Architecture
 
