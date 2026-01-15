@@ -6,29 +6,86 @@ import { logger } from '../utils/logger';
 
 export class ChatController {
     /**
+     * Create a new conversation
+     */
+    async createConversation(req: Request, res: Response): Promise<void> {
+        try {
+            const user = (req as AuthenticatedRequest).user!;
+            const { title } = req.body;
+
+            const conversation = await chatService.createConversation(user.userId, title);
+
+            res.status(201).json(conversation);
+        } catch (error) {
+            logger.error('Create conversation controller error', error);
+            res.status(500).json({ error: 'Failed to create conversation' });
+        }
+    }
+
+    /**
+     * Get all conversations for user
+     */
+    async getConversations(req: Request, res: Response): Promise<void> {
+        try {
+            const user = (req as AuthenticatedRequest).user!;
+            const conversations = await chatService.getUserConversations(user.userId);
+
+            res.status(200).json(conversations);
+        } catch (error) {
+            logger.error('Get conversations controller error', error);
+            res.status(500).json({ error: 'Failed to fetch conversations' });
+        }
+    }
+
+    /**
+     * Delete a conversation
+     */
+    async deleteConversation(req: Request, res: Response): Promise<void> {
+        try {
+            const user = (req as AuthenticatedRequest).user!;
+            const { id } = req.params;
+
+            await chatService.deleteConversation(user.userId, id);
+
+            res.status(200).json({ message: 'Conversation deleted' });
+        } catch (error) {
+            logger.error('Delete conversation controller error', error);
+            res.status(500).json({ error: 'Failed to delete conversation' });
+        }
+    }
+
+    /**
      * Handle sending a chat message
      */
     async sendMessage(req: Request, res: Response): Promise<void> {
         try {
-            const { message } = req.body as ChatRequest;
+            const { message, conversationId } = req.body as ChatRequest & { conversationId?: string };
             const user = (req as AuthenticatedRequest).user!;
+            let targetConversationId = conversationId;
+
+            // If no conversationId, create one
+            if (!targetConversationId) {
+                const newConv = await chatService.createConversation(user.userId, message.substring(0, 30) + '...');
+                targetConversationId = newConv.id;
+            }
 
             // Store user message
-            await chatService.storeMessage(user.userId, 'user', message);
+            await chatService.storeMessage(user.userId, 'user', message, targetConversationId!);
 
             // Get recent conversation history for context
-            const history = await chatService.getRecentHistory(user.userId, 10);
+            const history = await chatService.getRecentHistory(user.userId, targetConversationId!, 10);
 
             // Generate AI response with context
             const aiResponse = await aiService.generateResponse(message, history);
 
             // Store AI response
-            await chatService.storeMessage(user.userId, 'assistant', aiResponse);
+            await chatService.storeMessage(user.userId, 'assistant', aiResponse, targetConversationId!);
 
             res.status(200).json({
                 message: aiResponse,
                 role: 'assistant',
                 timestamp: new Date().toISOString(),
+                conversationId: targetConversationId // Return conversation ID so client can update
             });
         } catch (error: any) {
             logger.error('Send message controller error', error);
@@ -55,10 +112,17 @@ export class ChatController {
     async getHistory(req: Request, res: Response): Promise<void> {
         try {
             const user = (req as AuthenticatedRequest).user!;
+            const conversationId = req.query.conversationId as string;
+
+            if (!conversationId) {
+                res.status(400).json({ error: 'Conversation ID is required' });
+                return;
+            }
+
             const limit = parseInt(req.query.limit as string) || 50;
             const offset = parseInt(req.query.offset as string) || 0;
 
-            const messages = await chatService.getChatHistory(user.userId, limit, offset);
+            const messages = await chatService.getChatHistory(user.userId, conversationId, limit, offset);
 
             res.status(200).json({
                 messages: messages.map((msg) => ({
@@ -83,7 +147,7 @@ export class ChatController {
     }
 
     /**
-     * Handle deleting chat history
+     * Handle deleting chat history (clears all)
      */
     async deleteHistory(req: Request, res: Response): Promise<void> {
         try {

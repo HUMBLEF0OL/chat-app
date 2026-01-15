@@ -9,6 +9,11 @@ const router = Router();
 // All chat routes require authentication
 router.use(authenticateToken);
 
+// Conversation routes
+router.post('/conversations', (req: Request, res: Response) => chatController.createConversation(req, res));
+router.get('/conversations', (req: Request, res: Response) => chatController.getConversations(req, res));
+router.delete('/conversations/:id', (req: Request, res: Response) => chatController.deleteConversation(req, res));
+
 /**
  * POST /chat/send
  * Send a message and get AI response
