@@ -1,3 +1,12 @@
+export interface Conversation {
+    id: string;
+    userId: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    isActive: boolean;
+}
+
 export interface ApiMessage {
     role: 'user' | 'assistant';
     content: string;
@@ -23,12 +32,14 @@ export interface ChatHistory {
 
 export interface SendMessageRequest {
     message: string;
+    conversationId?: string;
 }
 
 export interface SendMessageResponse {
     message: string;
     role: 'assistant';
     timestamp: string;
+    conversationId: string;
 }
 
 export interface ChatError {

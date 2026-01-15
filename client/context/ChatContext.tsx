@@ -1,11 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Message } from '@/types/chat.types';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Message, Conversation } from '@/types/chat.types';
 import { chatService } from '@/services/chat.service';
 
 interface ChatContextType {
     messages: Message[];
+    conversations: Conversation[];
+    currentConversationId: string | null;
+    createConversation: () => Promise<void>;
+    selectConversation: (id: string) => void;
+    deleteConversation: (id: string) => Promise<void>;
     sendMessage: (message: string) => Promise<void>;
     loadHistory: () => Promise<void>;
     clearHistory: () => Promise<void>;
@@ -17,21 +22,82 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [messages, setMessages] = useState<Message[]>([]);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Load conversations on mount
+    useEffect(() => {
+        loadConversations();
+    }, []);
+
+    const loadConversations = async () => {
+        try {
+            const data = await chatService.getConversations();
+            setConversations(data);
+        } catch (err) {
+            console.error('Failed to load conversations', err);
+        }
+    };
+
+    const createConversation = useCallback(async () => {
+        setLoading(true);
+        try {
+            const newConv = await chatService.createConversation('New Chat');
+            setConversations(prev => [newConv, ...prev]);
+            setCurrentConversationId(newConv.id);
+            setMessages([]);
+        } catch (err) {
+            console.error('Failed to create conversation', err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const selectConversation = useCallback(async (id: string) => {
+        setCurrentConversationId(id);
+        setMessages([]); // Clear current messages while loading new ones
+        // History loading is triggered by useEffect in ChatContainer or explicitly here
+        // We'll let ChatContainer trigger loadHistory when ID changes, or call it here
+    }, []);
+
+    const deleteConversation = useCallback(async (id: string) => {
+        try {
+            await chatService.deleteConversation(id);
+            setConversations(prev => prev.filter(c => c.id !== id));
+            if (currentConversationId === id) {
+                setCurrentConversationId(null);
+                setMessages([]);
+            }
+        } catch (err) {
+            console.error('Failed to delete conversation', err);
+        }
+    }, [currentConversationId]);
 
     const sendMessage = useCallback(async (message: string) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await chatService.sendMessage({ message });
+            // Include current conversation ID if exists (though service handles creation if null)
+            const response = await chatService.sendMessage({
+                message,
+                conversationId: currentConversationId || undefined
+            });
+
+            // If we didn't have a conversation ID, set it from response
+            if (!currentConversationId && response.conversationId) {
+                setCurrentConversationId(response.conversationId);
+                // Also refresh conversations list to show the new one
+                loadConversations();
+            }
 
             // Create a message object that matches the UI format
             const newMessage: Message = {
                 id: `msg_${Date.now()}`,
-                userId: '', // Will be populated from history
+                userId: '',
                 userMessage: message,
-                aiResponse: response.message, // API returns 'message' not 'response'
+                aiResponse: response.message,
                 timestamp: response.timestamp,
             };
 
@@ -48,13 +114,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentConversationId]);
 
     const loadHistory = useCallback(async () => {
+        if (!currentConversationId) return;
+
         setLoading(true);
         setError(null);
         try {
-            const history = await chatService.getHistory();
+            const history = await chatService.getHistory(currentConversationId);
 
             // Transform API messages to UI format
             const transformedMessages: Message[] = [];
@@ -79,17 +147,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setMessages(transformedMessages);
         } catch (error: any) {
             console.error('Failed to load history:', error);
-            // Don't throw, just log - it's okay if history fails to load
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentConversationId]);
 
     const clearHistory = useCallback(async () => {
         try {
             await chatService.deleteHistory();
             setMessages([]);
             setError(null);
+            loadConversations(); // Reload conversations as they might be gone
         } catch (error: any) {
             console.error('Failed to clear history:', error);
             throw error;
@@ -97,7 +165,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <ChatContext.Provider value={{ messages, sendMessage, loadHistory, clearHistory, loading, error }}>
+        <ChatContext.Provider value={{
+            messages,
+            conversations,
+            currentConversationId,
+            createConversation,
+            selectConversation,
+            deleteConversation,
+            sendMessage,
+            loadHistory,
+            clearHistory,
+            loading,
+            error
+        }}>
             {children}
         </ChatContext.Provider>
     );

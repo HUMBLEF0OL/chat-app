@@ -1,4 +1,4 @@
-import { ChatHistory, SendMessageRequest, SendMessageResponse } from '@/types/chat.types';
+import { ChatHistory, SendMessageRequest, SendMessageResponse, Conversation } from '@/types/chat.types';
 import { authService } from './auth.service';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -35,14 +35,14 @@ export const chatService = {
         return await response.json();
     },
 
-    async getHistory(): Promise<ChatHistory> {
+    async getHistory(conversationId: string): Promise<ChatHistory> {
         const token = authService.getToken();
 
         if (!token) {
             throw new Error('No authentication token found');
         }
 
-        const response = await fetch(`${API_URL}/chat/history`, {
+        const response = await fetch(`${API_URL}/chat/history?conversationId=${conversationId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -55,6 +55,56 @@ export const chatService = {
         }
 
         return await response.json();
+    },
+
+    async getConversations(): Promise<Conversation[]> {
+        const token = authService.getToken();
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_URL}/chat/conversations`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch conversations');
+        }
+
+        return await response.json();
+    },
+
+    async createConversation(title: string): Promise<Conversation> {
+        const token = authService.getToken();
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_URL}/chat/conversations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to create conversation');
+        }
+
+        return await response.json();
+    },
+
+    async deleteConversation(id: string): Promise<void> {
+        const token = authService.getToken();
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_URL}/chat/conversations/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete conversation');
+        }
     },
 
     async deleteHistory(): Promise<{ message: string; deletedCount: number }> {

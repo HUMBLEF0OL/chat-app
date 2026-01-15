@@ -7,11 +7,13 @@ import { MessageInput } from './MessageInput';
 import { TypingIndicator } from './TypingIndicator';
 
 export const ChatContainer: React.FC = () => {
-    const { messages, sendMessage, loadHistory, loading, error } = useChat();
+    const { messages, sendMessage, loadHistory, loading, error, currentConversationId } = useChat();
 
     useEffect(() => {
-        loadHistory();
-    }, []);
+        if (currentConversationId) {
+            loadHistory();
+        }
+    }, [currentConversationId]);
 
     const handleSendMessage = async (message: string) => {
         await sendMessage(message);
