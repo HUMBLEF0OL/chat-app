@@ -3,20 +3,43 @@
 import React from 'react';
 import { useChat } from '@/context/ChatContext';
 import { Button } from '@/components/ui/Button';
+import { Dialog } from '@/components/ui/Dialog';
+import { useState } from 'react';
 
-export const ChatSidebar: React.FC = () => {
+export const ChatSidebar: React.FC<{ onMobileClose?: () => void }> = ({ onMobileClose }) => {
     const { conversations, currentConversationId, selectConversation, createConversation, deleteConversation } = useChat();
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    const handleCreate = async () => {
+        await createConversation();
+        if (onMobileClose) onMobileClose();
+    };
+
+    const handleSelect = (id: string) => {
+        selectConversation(id);
+        if (onMobileClose) onMobileClose();
+    };
 
     return (
         <div className="w-64 h-full bg-gray-900 border-r border-gray-800 flex flex-col">
-            <div className="p-4">
+            <div className="p-4 flex items-center justify-between md:block">
                 <Button
-                    onClick={() => createConversation()}
+                    onClick={handleCreate}
                     className="w-full justify-start gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-none border-none"
                     variant="primary"
                 >
                     + New Chat
                 </Button>
+
+                {/* Mobile Close Button */}
+                <button
+                    onClick={onMobileClose}
+                    className="md:hidden ml-2 p-2 text-gray-400 hover:text-white"
+                >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 space-y-1">
@@ -27,7 +50,7 @@ export const ChatSidebar: React.FC = () => {
                             group flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors
                             ${currentConversationId === conv.id ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}
                         `}
-                        onClick={() => selectConversation(conv.id)}
+                        onClick={() => handleSelect(conv.id)}
                     >
                         <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -38,7 +61,7 @@ export const ChatSidebar: React.FC = () => {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Delete this chat?')) deleteConversation(conv.id);
+                                setDeleteId(conv.id);
                             }}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
                         >
@@ -56,9 +79,21 @@ export const ChatSidebar: React.FC = () => {
                 )}
             </div>
 
+            <Dialog
+                open={!!deleteId}
+                onClose={() => setDeleteId(null)}
+                title="Delete Chat"
+                description="Are you sure you want to delete this conversation? This action cannot be undone."
+                confirmText="Delete"
+                variant="danger"
+                onConfirm={() => {
+                    if (deleteId) deleteConversation(deleteId);
+                }}
+            />
+
             <div className="p-4 border-t border-gray-800">
                 {/* User profile or other footer items can go here */}
             </div>
-        </div>
+        </div >
     );
 };

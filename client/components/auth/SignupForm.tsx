@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
 
 export const SignupForm: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -37,9 +38,9 @@ export const SignupForm: React.FC = () => {
             </div>
 
             {error && (
-                <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg">
+                <Alert variant="error">
                     {error}
-                </div>
+                </Alert>
             )}
 
             <Input

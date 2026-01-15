@@ -32,7 +32,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = f
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+            const scrollHeight = textareaRef.current.scrollHeight;
+
+            if (scrollHeight > 200) {
+                textareaRef.current.style.height = '200px';
+                textareaRef.current.style.overflowY = 'auto';
+            } else {
+                textareaRef.current.style.height = scrollHeight + 'px';
+                textareaRef.current.style.overflowY = 'hidden';
+            }
         }
     }, [message]);
 
@@ -71,6 +79,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = f
                             disabled={disabled || !message.trim() || charCount > maxChars}
                             className="
                 p-2 rounded-lg
+                mb-1
                 bg-blue-600
                 hover:from-blue-700 hover:to-purple-700
                 text-white
